@@ -51,8 +51,6 @@ class RunWithPerformance:
         else:
             self._stdout = None
             self._stderr = None
-        #
-        self._main_c = os.path.basename(command.split()[0])
 
     def _run_command(self):
         if self._stdout:
@@ -63,7 +61,10 @@ class RunWithPerformance:
             subprocess.call(self.command, shell=True)
 
     def _run_pidstat(self):
-        cmd = 'pidstat {} -rud -C {}'.format(self.perf_seconds, self._main_c)
+        main_c = os.path.basename(command.split()[0])
+        if main_c > 10:
+            main_c = main_c[:10] + '*'
+        cmd = 'pidstat {} -rud -C "{}"'.format(self.perf_seconds, main_c)
         print(cmd)
         subprocess.call(cmd, shell=True, stdout=open(self._performance, 'w'))
 
