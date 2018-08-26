@@ -62,7 +62,7 @@ class RunWithPerformance:
 
     def _run_pidstat(self):
         main_c = os.path.basename(self.command.split()[0])
-        if main_c > 10:
+        if len(main_c) > 10:
             main_c = main_c[:10] + '*'
         cmd = 'pidstat {} -rud -C "{}"'.format(self.perf_seconds, main_c)
         print(cmd)
