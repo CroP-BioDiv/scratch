@@ -53,6 +53,7 @@ class RunWithPerformance:
             self._stderr = None
 
     def _run_command(self):
+        print(self.command)
         if self._stdout:
             subprocess.call(self.command, shell=True,
                             stdout=open(self._stdout, 'w'),
