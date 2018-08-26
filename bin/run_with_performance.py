@@ -92,7 +92,7 @@ class RunWithPerformance:
         print('INFO: Finished!')
 
         if self.performance:
-            self._p_pidstat.terminate()
+            self._p_pidstat.kill()
 
         if self.time_it:
             print('INFO: Writing end time!')
