@@ -21,6 +21,7 @@ def analyze(filename):
     sum_cpu = 0
     num_cpu = 0
     max_vsz_mem = None
+    max_rss_mem = None
 
     for l in file_data:
         # Empty line
@@ -52,10 +53,14 @@ def analyze(filename):
                 m = int(data[mem_idx + offset])
                 if max_vsz_mem is None or max_vsz_mem < m:
                     max_vsz_mem = m
+                m = int(data[indices['RSS'] + offset])
+                if max_rss_mem is None or max_rss_mem < m:
+                    max_rss_mem = m
     #
     print('Max CPU {0:.2f}%'.format(max_cpu))
     print('Average CPU {0:.2f}%'.format(sum_cpu / num_cpu))
-    print('Max memory {0:.1f} GB'.format(max_vsz_mem / (1024 * 1024)))
+    print('Max memory {0:.1f} / {1:.1f} GB'.format(
+        max_vsz_mem / (1024 * 1024), max_rss_mem / (1024 * 1024)))
 
 
 if __name__ == '__main__':
