@@ -76,7 +76,7 @@ class RunWithPerformance:
                     datetime.datetime.now().isoformat()))
 
         if self.performance:
-            print('INFO: Starting pidstat!')
+            print('INFO: Starting pidstat!', self._pid_cmd())
             _p_pidstat = subprocess.Popen(
                 self._pid_cmd(), stdout=open(self._performance, 'w'))
             print('INFO: pidstat started!', _p_pidstat.pid)

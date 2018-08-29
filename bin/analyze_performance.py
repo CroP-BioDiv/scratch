@@ -17,6 +17,8 @@ def analyze(filename):
     file_data = open(filename)
     file_data.readline()  # Skip first line
     #
+    first_time = None
+    last_time = None
     max_cpu = None
     sum_cpu = 0
     num_cpu = 0
@@ -34,8 +36,12 @@ def analyze(filename):
             # Check is time in int or string format
             if data[0].isdigit():
                 offset = 0
+                last_time = data[0].join()
             else:
                 offset = 1
+                last_time = data[:2].join()
+            if first_time is None:
+                first_time = last_time
 
             # CPU
             cpu_idx = indices.get('CPU')
@@ -61,6 +67,7 @@ def analyze(filename):
     print('Average CPU {0:.2f}%'.format(sum_cpu / num_cpu))
     print('Max memory {0:.1f} / {1:.1f} GB'.format(
         max_vsz_mem / (1024 * 1024), max_rss_mem / (1024 * 1024)))
+    print('Times {} - {}'.format(first_time, last_time))
 
 
 if __name__ == '__main__':
