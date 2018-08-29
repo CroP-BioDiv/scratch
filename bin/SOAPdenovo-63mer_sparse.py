@@ -31,18 +31,22 @@ else:
         cmd.append('-R')
     if params.K:
         cmd.extend(['-K', params.K])
+    print(cmd)
     subprocess.call(cmd)
 
     # Contig
     cmd = ['SOAPdenovo-63mer', 'contig']
     if params.R:
         cmd.append('-R')
+    print(cmd)
     subprocess.call(cmd)
 
     # Map
     cmd = ['SOAPdenovo-63mer', 'map', '-s', params.s, '-g', params.o]
+    print(cmd)
     subprocess.call(cmd)
 
     # Scaffold
     cmd = ['SOAPdenovo-63mer', 'scaff', '-g', params.o, '-F']
+    print(cmd)
     subprocess.call(cmd)
