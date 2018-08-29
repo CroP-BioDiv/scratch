@@ -57,13 +57,24 @@ class RunWithPerformance:
             self._stdout = None
             self._stderr = None
 
+    def _run_command(self, cmd, open_flag):
+        def f():
+            if self._stdout:
+                subprocess.call(cmd.split(),
+                                stdout=open(self._stdout, open_flag),
+                                stderr=open(self._stderr, open_flag))
+            else:
+                subprocess.call(cmd.split())
+        return f
+
     def _pid_cmd(self, cmd):
         main_c = os.path.basename(cmd.split()[0])
         if len(main_c) > 10:
             main_c = '"' + main_c[:10] + '*"'
         return ['pidstat', str(self.perf_seconds),
                 '-rud', '-h',
-                '-C', main_c]
+                '-p', str(self._p_run.pid)]
+                # '-C', main_c]
 
     def run(self):
         if self.time_it:
@@ -77,20 +88,19 @@ class RunWithPerformance:
             open_flag = 'w' if first_cmd else 'a'
             first_cmd = False
 
+            print('INFO: Starting command!')
+            self._p_run = multiprocessing.Process(target=self._run_command(cmd, open_flag))
+            self._p_run.start()
+            print('INFO: Command started!', self._p_run.pid)
+
             if self.performance:
-                p_cmd = self._pid_cmd(cmd)
-                print('INFO: Starting pidstat!', p_cmd)
+                p = self._pid_cmd(cmd)
+                print('INFO: Starting pidstat!', p)
                 _p_pidstat = subprocess.Popen(
-                    p_cmd, stdout=open(self._performance, open_flag))
+                    p, stdout=open(self._performance, open_flag))
                 print('INFO: pidstat started!', _p_pidstat.pid)
 
-            print('INFO: Starting command!', cmd)
-            if self._stdout:
-                subprocess.call(cmd.split(),
-                                stdout=open(self._stdout, open_flag),
-                                stderr=open(self._stderr, open_flag))
-            else:
-                subprocess.call(cmd.split())
+            self._p_run.join()
             print('INFO: Command Finished!')
 
             if self.performance:
