@@ -8,14 +8,14 @@ import argparse
 parser = argparse.ArgumentParser(description='Run sparse SOAPdenovo version')
 
 parser.add_argument('-s', help="Config file")
-parser.add_argument('-K', type=int, help="kmer")
+parser.add_argument('-K', help="kmer")
 parser.add_argument('-R', action='store_true', default=False,
                     help="resolve repeats by reads")
-parser.add_argument('-p', type=int, help="n_cpu: number of cpu for use")
+parser.add_argument('-p', help="n_cpu: number of cpu for use")
 parser.add_argument(
     '-o', default='graph', help="outputGraph: prefix of output graph file name")
 parser.add_argument(
-    '-z', type=int, help="genomeSize(mandatory): estimated genome size")
+    '-z', help="genomeSize(mandatory): estimated genome size")
 
 params = parser.parse_args()
 
