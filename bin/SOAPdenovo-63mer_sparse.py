@@ -17,6 +17,8 @@ parser.add_argument(
 parser.add_argument(
     '-z', type=int, help="genomeSize(mandatory): estimated genome size")
 
+params = parser.parse_args()
+
 if not params.s or not params.z:
     print('No parameters!')
 else:
