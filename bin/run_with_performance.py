@@ -57,16 +57,6 @@ class RunWithPerformance:
             self._stdout = None
             self._stderr = None
 
-    def _run_command(self, cmd):
-        def f():
-            if self._stdout:
-                subprocess.call(cmd.split(),
-                                stdout=open(self._stdout, 'w'),
-                                stderr=open(self._stderr, 'w'))
-            else:
-                subprocess.call(cmd.split())
-        return f
-
     def _pid_cmd(self, cmd):
         main_c = os.path.basename(cmd.split()[0])
         if len(main_c) > 10:
@@ -84,21 +74,23 @@ class RunWithPerformance:
 
         first_cmd = True
         for cmd in self.commands:
+            open_flag = 'w' if first_cmd else 'a'
+            first_cmd = False
+
             if self.performance:
                 print('INFO: Starting pidstat!')
                 _p_pidstat = subprocess.Popen(
                     self._pid_cmd(cmd),
-                    stdout=open(self._performance, 'w' if first_cmd else 'a'))
+                    stdout=open(self._performance, open_flag))
                 print('INFO: pidstat started!', _p_pidstat.pid)
 
-            first_cmd = False
-
-            print('INFO: Starting command!')
-            self._p_run = multiprocessing.Process(target=self._run_command(cmd))
-            self._p_run.start()
-            print('INFO: Command started!', self._p_run.pid)
-
-            self._p_run.join()
+            print('INFO: Starting command!', cmd)
+            if self._stdout:
+                subprocess.call(cmd.split(),
+                                stdout=open(self._stdout, open_flag),
+                                stderr=open(self._stderr, open_flag))
+            else:
+                subprocess.call(cmd.split())
             print('INFO: Command Finished!')
 
             if self.performance:
