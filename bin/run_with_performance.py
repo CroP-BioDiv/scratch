@@ -78,10 +78,10 @@ class RunWithPerformance:
             first_cmd = False
 
             if self.performance:
-                print('INFO: Starting pidstat!')
+                p_cmd = self._pid_cmd(cmd)
+                print('INFO: Starting pidstat!', p_cmd)
                 _p_pidstat = subprocess.Popen(
-                    self._pid_cmd(cmd),
-                    stdout=open(self._performance, open_flag))
+                    p_cmd, stdout=open(self._performance, open_flag))
                 print('INFO: pidstat started!', _p_pidstat.pid)
 
             print('INFO: Starting command!', cmd)
