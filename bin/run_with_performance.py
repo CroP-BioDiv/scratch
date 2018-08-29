@@ -88,7 +88,7 @@ class RunWithPerformance:
             open_flag = 'w' if first_cmd else 'a'
             first_cmd = False
 
-            print('INFO: Starting command!')
+            print('INFO: Starting command!', cmd)
             self._p_run = multiprocessing.Process(target=self._run_command(cmd, open_flag))
             self._p_run.start()
             print('INFO: Command started!', self._p_run.pid)
@@ -107,11 +107,12 @@ class RunWithPerformance:
                 _p_pidstat.terminate()
                 print('INFO: pidstat terminated!')
 
-        if self.time_it:
-            print('INFO: Writing end time!')
-            with open(self._times, 'a') as f:
-                f.write("ended: {}\n".format(
-                    datetime.datetime.now().isoformat()))
+            if self.time_it:
+                print('INFO: Writing end time!')
+                with open(self._times, 'a') as f:
+                    f.write("cmd: {}\n".format(cmd))
+                    f.write("ended: {}\n".format(
+                        datetime.datetime.now().isoformat()))
 
 
 if __name__ == '__main__':
