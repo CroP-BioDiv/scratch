@@ -66,7 +66,10 @@ class RunWithPerformance:
         main_c = os.path.basename(self.command.split()[0])
         if len(main_c) > 10:
             main_c = '"' + main_c[:10] + '*"'
-        return ['pidstat', str(self.perf_seconds), '-rud', '-h', '-C', main_c]
+        return ['pidstat', str(self.perf_seconds),
+                '-rud', '-h',
+                '-C', main_c,
+                '-T', 'CHILD']
 
     def run(self):
         if self.time_it:
