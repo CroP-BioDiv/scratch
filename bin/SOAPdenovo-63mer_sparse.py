@@ -7,18 +7,15 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Run sparse SOAPdenovo version')
 
-parser.add_argument('-s', description="Config file")
-parser.add_argument('-K', type='int', description="kmer")
+parser.add_argument('-s', help="Config file")
+parser.add_argument('-K', type=int, help="kmer")
 parser.add_argument('-R', action='store_true', default=False,
-                    description="resolve repeats by reads")
+                    help="resolve repeats by reads")
+parser.add_argument('-p', type=int, help="n_cpu: number of cpu for use")
 parser.add_argument(
-    '-p', type='int', description="n_cpu: number of cpu for use")
+    '-o', default='graph', help="outputGraph: prefix of output graph file name")
 parser.add_argument(
-    '-o', default='graph',
-    description="outputGraph: prefix of output graph file name")
-parser.add_argument(
-    '-z', type='int',
-    description="genomeSize(mandatory): estimated genome size")
+    '-z', type=int, help="genomeSize(mandatory): estimated genome size")
 
 if not params.s or not params.z:
     print('No parameters!')
