@@ -14,9 +14,6 @@
 
 
 def analyze(filename):
-    file_data = open(filename)
-    file_data.readline()  # Skip first line
-    #
     first_time = None
     last_time = None
     max_cpu = None
@@ -25,9 +22,11 @@ def analyze(filename):
     max_vsz_mem = None
     max_rss_mem = None
 
-    for l in file_data:
+    for l in open(filename):
         # Empty line
         if len(l) == 1:
+            continue
+        if l.startswith('Linux'):
             continue
         if l[0] == '#':
             indices = dict((k, i) for i, k in enumerate(l[1:-1].split()))

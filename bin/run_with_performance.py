@@ -73,8 +73,7 @@ class RunWithPerformance:
             main_c = '"' + main_c[:10] + '*"'
         return ['pidstat', str(self.perf_seconds),
                 '-rud', '-h',
-                '-C', main_c,
-                '-T', 'CHILD']
+                '-C', main_c]
 
     def run(self):
         if self.time_it:
