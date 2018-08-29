@@ -2,8 +2,9 @@
 
 import os
 import datetime
-from multiprocessing import Process
+import multiprocessing
 import subprocess
+import signal
 
 
 class RunWithPerformance:
@@ -55,19 +56,17 @@ class RunWithPerformance:
     def _run_command(self):
         print(self.command)
         if self._stdout:
-            subprocess.call(self.command, shell=True,
+            subprocess.call(self.command.split(),
                             stdout=open(self._stdout, 'w'),
                             stderr=open(self._stderr, 'w'))
         else:
-            subprocess.call(self.command, shell=True)
+            subprocess.call(self.command.split())
 
-    def _run_pidstat(self):
+    def _pid_cmd(self):
         main_c = os.path.basename(self.command.split()[0])
         if len(main_c) > 10:
-            main_c = main_c[:10] + '*'
-        cmd = 'pidstat {} -rud -h -C "{}"'.format(self.perf_seconds, main_c)
-        print(cmd)
-        subprocess.call(cmd, shell=True, stdout=open(self._performance, 'w'))
+            main_c = '"' + main_c[:10] + '*"'
+        return ['pidstat', str(self.perf_seconds), '-rud', '-h', '-C', main_c]
 
     def run(self):
         if self.time_it:
@@ -76,23 +75,22 @@ class RunWithPerformance:
                 f.write("started: {}\n".format(
                     datetime.datetime.now().isoformat()))
 
-        print('INFO: Starting command!')
-        self._p_run = Process(target=self._run_command)
-        self._p_run.start()
-        print('INFO: Command started!')
-
         if self.performance:
             print('INFO: Starting pidstat!')
-            self._p_pidstat = Process(target=self._run_pidstat)
-            self._p_pidstat.start()
-            print('INFO: pidstat started!')
+            _p_pidstat = subprocess.Popen(
+                self._pid_cmd(), stdout=open(self._performance, 'w'))
+            print('INFO: pidstat started!', _p_pidstat.pid)
 
-        print('INFO: Joining!')
+        print('INFO: Starting command!')
+        self._p_run = multiprocessing.Process(target=self._run_command)
+        self._p_run.start()
+        print('INFO: Command started!', self._p_run.pid)
         self._p_run.join()
-        print('INFO: Finished!')
+        print('INFO: Command Finished!')
 
         if self.performance:
-            self._p_pidstat.kill()
+            _p_pidstat.terminate()
+            print('INFO: pidstat terminated!')
 
         if self.time_it:
             print('INFO: Writing end time!')
