@@ -13,7 +13,10 @@
 # 03:23:18 PM  1000     23660  100.00   64.65    0.00    0.82  100.00     5 182166.53      0.00 43002060 41166852   7.81      0.00      0.20      0.00       0  SOAPdenovo-63me
 
 import datetime
-import dateutil.parser
+
+
+def iso2time(s):
+    return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%S.%f")
 
 
 def analyze(perf_filename, time_filename):
@@ -71,11 +74,11 @@ def analyze(perf_filename, time_filename):
         cmd = None
         for l in open(time_filename):
             if l.startswith('started'):
-                first_time = dateutil.parser.parse(l.split()[1])
+                first_time = iso2time(l.split()[1])
             elif l.startswith('cmd'):
                 cmd = l[5:]
             elif l.startswith('ended'):
-                d = dateutil.parser.parse(l.split()[1]) - first_time
+                d = iso2time(l.split()[1]) - first_time
                 hours = d.seconds // 3600
                 mins = (d.seconds - hours * 3600) // 60
                 print("{:>2} days {:>2}:{:02d} - {}".format(
