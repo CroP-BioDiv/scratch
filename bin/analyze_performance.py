@@ -76,7 +76,7 @@ def analyze(perf_filename, time_filename):
             if l.startswith('started'):
                 first_time = iso2time(l.split()[1])
             elif l.startswith('cmd'):
-                cmd = l[5:]
+                cmd = l[5:-1]
             elif l.startswith('ended'):
                 d = iso2time(l.split()[1]) - first_time
                 hours = d.seconds // 3600
