@@ -57,23 +57,13 @@ class RunWithPerformance:
             self._stdout = None
             self._stderr = None
 
-    def _run_command(self, cmd, open_flag):
-        def f():
-            if self._stdout:
-                subprocess.call(cmd.split(),
-                                stdout=open(self._stdout, open_flag),
-                                stderr=open(self._stderr, open_flag))
-            else:
-                subprocess.call(cmd.split())
-        return f
-
     def _pid_cmd(self, cmd):
         main_c = os.path.basename(cmd.split()[0])
         if len(main_c) > 10:
             main_c = '"' + main_c[:10] + '*"'
         return ['pidstat', str(self.perf_seconds),
                 '-rud', '-h',
-                '-p', str(self._p_run.pid)]
+                '-p', str(self._p_cmd.pid)]
                 # '-C', main_c]
 
     def run(self):
@@ -88,19 +78,23 @@ class RunWithPerformance:
             open_flag = 'w' if first_cmd else 'a'
             first_cmd = False
 
-            print('INFO: Starting command!', cmd)
-            self._p_run = multiprocessing.Process(target=self._run_command(cmd, open_flag))
-            self._p_run.start()
-            print('INFO: Command started!', self._p_run.pid)
+            print('INFO: Starting command: "{}"'.format(cmd))
+            if self._stdout:
+                self._p_cmd = subprocess.Popen(
+                    cmd.split(),
+                    stdout=open(self._stdout, open_flag),
+                    stderr=open(self._stderr, open_flag))
+            else:
+                self._p_cmd = subprocess.Popen(cmd.split())
+            print('INFO: Command started!', self._p_cmd.pid)
 
             if self.performance:
                 p = self._pid_cmd(cmd)
-                print('INFO: Starting pidstat!', p)
-                _p_pidstat = subprocess.Popen(
-                    p, stdout=open(self._performance, open_flag))
+                print('INFO: Starting pidstat: "{}"'.format(' '.join(p)))
+                _p_pidstat = subprocess.Popen(p, stdout=open(self._performance, open_flag))
                 print('INFO: pidstat started!', _p_pidstat.pid)
 
-            self._p_run.join()
+            self._p_cmd.wait()
             print('INFO: Command Finished!')
 
             if self.performance:
