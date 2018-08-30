@@ -28,7 +28,7 @@ class RunWithPerformance:
                  time_it=True,
                  std=True,
                  performance=True,
-                 perf_seconds=60,
+                 perf_seconds=10,
                  **kwargs):  # Other not used parameters
 
         assert command
