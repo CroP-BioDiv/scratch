@@ -1,13 +1,19 @@
 #!/usr/bin/python3
 
-import os.path
+import os
 import itertools
 from Bio import SeqIO
 from BCBio import GFF
 
-# Anotacije
-#  - /home/ante/Programs/alignment/BAli_Phy/bali-phy-3.4.1/bin/bali-phy <fajl>
-#  - Force pool za anotacije
+_MUSCLE_EXE = '/home/ante/Programs/alignment/MUSCLE/muscle3.8.31/muscle'
+
+
+def _align(job_ind, input_file, output_dir):
+    _, output_file = os.path.split(input_file)
+    output_file = os.path.join(output_dir, output_file)
+    cmd = f"{_MUSCLE_EXE} -in {input_file} -out {output_file}"
+    print(f"Job {job_ind} started: {cmd}")
+    os.system(cmd)
 
 
 class AnnotatedSeq:
@@ -88,31 +94,17 @@ def ensure_directory(d):
                 "Can't create directory, file exists with same name (%s)!" % d)
 
 
-def _write_seq(output_dir, a, feature):
+def _write_sequences(output_file, annotated_files, features):
     # Writes one or more sequences
-    if isinstance(feature, str):
-        seq = a.extract_feature(feature)
-    else:
-        seq = a.extract_features(feature)
-    if seq:
-        ensure_directory(output_dir)
-        output_file = os.path.join(output_dir, a.file_id + '.fa')
-        with open(output_file, 'w') as output:
-            output.write('>{}\n'.format(a.sequence_name))
-            output.write(seq)
-            output.write('\n')
-
-
-def _extract_features_concatenate(output_dir, annotated_files, extract_features):
-    for a in annotated_files:
-        _write_seq(output_dir, a, extract_features)
-
-
-def _extract_features_separate(output_dir, annotated_files, extract_features):
-    for feature in extract_features:
-        d = os.path.join(output_dir, feature)
+    with open(output_file, 'w') as output:
         for a in annotated_files:
-            _write_seq(d, a, feature)
+            seq = a.extract_features(features)
+            if seq:
+                output.write('>{}\n'.format(a.sequence_name))
+                output.write(seq)
+                output.write('\n')
+            else:
+                print("Warning: sequnce {} doesn't have features {}!".format(a.file_id, features))
 
 
 # --------------------------------------------------------
@@ -128,21 +120,24 @@ if __name__ == '__main__':
     parser.add_argument('--sequence-ext', default='fsa', help='Sequence file extension')
     parser.add_argument('-G', '--gff-dir', default='gff3_files', help='Directory with gff files')
     parser.add_argument('--gff-ext', default='gff3', help='GFF file extension')
-    # Output
-    parser.add_argument('-O', '--output-dir', default='output_files', help='Directory with output files')
+    # # Output
+    # parser.add_argument('-O', '--output-dir', default='output_files', help='Directory with output files')
 
     # Info
     parser.add_argument('-N', '--num-genes', action='store_true', help='Print number of genes in genomes')
     parser.add_argument('-F', '--num-features', action='store_true', help='Print number of features in genomes')
-    parser.add_argument('-C', '--common-genes', action='store_true', help='Print common genes in genomes')
+    parser.add_argument('-C', '--print-common-genes', action='store_true', help='Print common genes in genomes')
+
     # Extract
-    parser.add_argument('-l', '--extract-features', help='Extract feature(s). Comma separated.')
-    parser.add_argument('-g', '--extract-common-genes', action='store_true', help='Extract common genes into a directory')
-    parser.add_argument('-f', '--extract-common-features', action='store_true', help='Extract common features into a directory')
-    parser.add_argument('-a', '--extract-all-genes', action='store_true',
-                        help='Extract all genes in different subdirectories')
-    parser.add_argument('-b', '--extract-all-features', action='store_true',
-                        help='Extract all features in different subdirectories')
+    # Features to extract
+    parser.add_argument('-l', '--features', help='Extract feature(s). Comma separated.')
+    parser.add_argument('-g', '--common-genes', action='store_true', help='Extract common genes')
+    parser.add_argument('-f', '--common-features', action='store_true', help='Extract common features')
+    # How and where to save
+    parser.add_argument('-s', '--in-separate-files', help='Directory for separate files')
+    parser.add_argument('-o', '--output-file', default='output.fa', help='Output file for concatenated data')
+    # Alignment
+    parser.add_argument('-a', '--alignment-directory', help='Make alignment')
 
     params = parser.parse_args()
 
@@ -177,23 +172,35 @@ if __name__ == '__main__':
         for a in sorted(annotated_files, key=lambda x: x.file_id):
             print('{:>4}  {}'.format(a.num_genes(), a.file_id))
 
-    if params.common_genes:
+    if params.print_common_genes:
         genes = common_genes(annotated_files)
         print('Number of same genes {}.'.format(len(genes)))
         print(genes)
 
-    if params.extract_features:
-        _extract_features_concatenate(params.output_dir, annotated_files, params.extract_features.split(','))
+    # Find what to extract
+    features = set()
+    if params.features:
+        features.update(params.features.split(','))
+    if params.common_genes:
+        features.update(common_genes(annotated_files))
+    if params.common_features:
+        features.update(common_features(annotated_files))
 
-    if params.extract_common_genes:
-        _extract_features_concatenate(params.output_dir, annotated_files, common_genes(annotated_files))
+    # Extract
+    if params.in_separate_files:
+        ensure_directory(params.in_separate_files)
+        sequences = []
+        for f in features:
+            sequences.append(os.path.join(params.in_separate_files, f) + '.fa')
+            _write_sequences(sequences[-1], annotated_files, [f])
+    else:
+        _write_sequences(params.output_file, annotated_files, features)
+        sequences = [params.output_file]
 
-    if params.extract_common_features:
-        _extract_features_concatenate(
-            params.output_dir, annotated_files, common_features(annotated_files))
+    if params.alignment_directory:
+        ensure_directory(params.alignment_directory)
+        from concurrent.futures import ThreadPoolExecutor
 
-    if params.extract_all_genes:
-        _extract_features_separate(params.output_dir, annotated_files, common_genes(annotated_files))
-
-    if params.extract_all_features:
-        _extract_features_separate(params.output_dir, annotated_files, common_features(annotated_files))
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            for job_ind, seq in enumerate(sequences):
+                future = executor.submit(_align, job_ind, seq, params.alignment_directory)
