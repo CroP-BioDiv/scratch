@@ -63,6 +63,7 @@ class AnnotatedSeq:
             return str(seq.seq)
 
     def extract_features(self, features):
+        assert isinstance(features, (list, tuple)), type(features)
         ret = ''
         for f in features:
             s = self.extract_feature(f)
@@ -96,15 +97,22 @@ def ensure_directory(d):
 
 def _write_sequences(output_file, annotated_files, features):
     # Writes one or more sequences
-    with open(output_file, 'w') as output:
-        for a in annotated_files:
-            seq = a.extract_features(features)
-            if seq:
-                output.write('>{}\n'.format(a.sequence_name))
-                output.write(seq)
-                output.write('\n')
-            else:
-                print("Warning: sequnce {} doesn't have features {}!".format(a.file_id, features))
+    data = []
+    for f in features:
+        seqs = [a.extract_feature(f) for a in annotated_files]
+        lens = list(map(len, seqs))
+        if min(lens) * 2 < max(lens):  # 1.5 izbaci jos atpB, 1.3 izbaci jos psbT
+            print('Sequences have quite different lengths', f, lens)
+        elif max(lens) == 0:
+            print('All sequences are empty quite different lengths', f)
+        else:
+            for a, seq in zip(annotated_files, seqs):
+                data.append('>' + a.sequence_name)
+                data.append(seq)
+
+    if data:
+        with open(output_file, 'w') as output:
+            output.writelines("%s\n" % l for l in data)
 
 
 # --------------------------------------------------------
@@ -112,7 +120,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Extract genome data from annotated genomes.")
 
     # Input
@@ -120,8 +128,6 @@ if __name__ == '__main__':
     parser.add_argument('--sequence-ext', default='fsa', help='Sequence file extension')
     parser.add_argument('-G', '--gff-dir', default='gff3_files', help='Directory with gff files')
     parser.add_argument('--gff-ext', default='gff3', help='GFF file extension')
-    # # Output
-    # parser.add_argument('-O', '--output-dir', default='output_files', help='Directory with output files')
 
     # Info
     parser.add_argument('-N', '--num-genes', action='store_true', help='Print number of genes in genomes')
@@ -190,11 +196,11 @@ if __name__ == '__main__':
     if params.in_separate_files:
         ensure_directory(params.in_separate_files)
         sequences = []
-        for f in features:
+        for f in sorted(features):
             sequences.append(os.path.join(params.in_separate_files, f) + '.fa')
             _write_sequences(sequences[-1], annotated_files, [f])
     else:
-        _write_sequences(params.output_file, annotated_files, features)
+        _write_sequences(params.output_file, annotated_files, sorted(features))
         sequences = [params.output_file]
 
     if params.alignment_directory:
