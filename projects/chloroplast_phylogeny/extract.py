@@ -6,12 +6,18 @@ from Bio import SeqIO
 from BCBio import GFF
 
 _MUSCLE_EXE = '/home/ante/Programs/alignment/MUSCLE/muscle3.8.31/muscle'
+_CLUSTALO_EXE = '/home/ante/bin/clustalo'
 
 
 def _align(job_ind, input_file, output_dir):
     _, output_file = os.path.split(input_file)
-    output_file = os.path.join(output_dir, output_file)
-    cmd = f"{_MUSCLE_EXE} -in {input_file} -out {output_file}"
+    # Muscle
+    # output_file = os.path.join(output_dir, output_file)
+    # cmd = f"{_MUSCLE_EXE} -in {input_file} -out {output_file}"
+    # Clustalo
+    output_file = os.path.join(output_dir, output_file.replace('.fa', '.phy'))
+    # --threads=n
+    cmd = f"{_CLUSTALO_EXE} -i {input_file} -o {output_file} --outfmt=phy"
     print(f"Job {job_ind} started: {cmd}")
     os.system(cmd)
 
@@ -27,7 +33,11 @@ class AnnotatedSeq:
         if len(self.seq_dict) != 1:
             print('Input file {} has more seqeuces {}!'.format(seq_file, len(self.seq_dict)))
         self.sequence = next(iter(self.seq_dict.values()))
-        self.sequence_name = next(iter(self.seq_dict.keys()))
+        sequence_name = next(iter(self.seq_dict.keys()))
+        # Artemisia_annua_Anthemideae_Asteroideae_Asteraceae_Asterales_NC034683_GenBank -> NC034683
+        # Tanacetum_cinerariifolium_Anthemideae_Asteroideae_Asteraceae_Asterales_ZCI0001_ZCI -> ZCI_0001
+        nc_num = sequence_name.split('_')[-2]
+        self.sequence_name = ('NC_' + nc_num[2:]) if nc_num.startswith('NC') else ('ZCI_' + nc_num[3:])
 
         with open(gff_file, 'r') as gff:
             # self.annotation = list(GFF.parse(gff))
@@ -97,7 +107,7 @@ def ensure_directory(d):
 
 def _write_sequences(output_file, annotated_files, features):
     # Writes one or more sequences
-    data = []
+    data = [[] for _ in annotated_files]  # By input files
     for f in features:
         seqs = [a.extract_feature(f) for a in annotated_files]
         lens = list(map(len, seqs))
@@ -106,13 +116,17 @@ def _write_sequences(output_file, annotated_files, features):
         elif max(lens) == 0:
             print('All sequences are empty quite different lengths', f)
         else:
-            for a, seq in zip(annotated_files, seqs):
-                data.append('>' + a.sequence_name)
-                data.append(seq)
+            for d, seq in zip(data, seqs):
+                # data.append('>' + a.sequence_name)
+                d.append(seq)
 
-    if data:
+    if data[0]:
         with open(output_file, 'w') as output:
-            output.writelines("%s\n" % l for l in data)
+            for a, d in zip(annotated_files, data):
+                output.write('>{}\n'.format(a.sequence_name))
+                output.writelines("%s\n" % l for l in d)
+        return True
+    return False
 
 
 # --------------------------------------------------------
@@ -197,8 +211,9 @@ if __name__ == '__main__':
         ensure_directory(params.in_separate_files)
         sequences = []
         for f in sorted(features):
-            sequences.append(os.path.join(params.in_separate_files, f) + '.fa')
-            _write_sequences(sequences[-1], annotated_files, [f])
+            seq_file = os.path.join(params.in_separate_files, f) + '.fa'
+            if _write_sequences(seq_file, annotated_files, [f]):
+                sequences.append(seq_file)
     else:
         _write_sequences(params.output_file, annotated_files, sorted(features))
         sequences = [params.output_file]
