@@ -105,9 +105,10 @@ def ensure_directory(d):
                 "Can't create directory, file exists with same name (%s)!" % d)
 
 
-def _write_sequences(output_file, annotated_files, features):
+def _write_sequences(output_file, annotated_files, features, index_file=None):
     # Writes one or more sequences
     data = [[] for _ in annotated_files]  # By input files
+    output_features = []
     for f in features:
         seqs = [a.extract_feature(f) for a in annotated_files]
         lens = list(map(len, seqs))
@@ -116,6 +117,7 @@ def _write_sequences(output_file, annotated_files, features):
         elif max(lens) == 0:
             print('All sequences are empty quite different lengths', f)
         else:
+            output_features.append(f)
             for d, seq in zip(data, seqs):
                 # data.append('>' + a.sequence_name)
                 d.append(seq)
@@ -125,6 +127,14 @@ def _write_sequences(output_file, annotated_files, features):
             for a, d in zip(annotated_files, data):
                 output.write('>{}\n'.format(a.sequence_name))
                 output.writelines("%s\n" % l for l in d)
+        if index_file:
+            with open(index_file, 'w') as output:
+                for a, d in zip(annotated_files, data):
+                    last_ind = 1
+                    for f, seq in zip(output_features, d):
+                        next_ind = last_ind + len(seq) - 1
+                        output.write(f"{a.sequence_name} {f} {last_ind} {next_ind}\n")
+                        last_ind = next_ind + 1
         return True
     return False
 
@@ -156,6 +166,7 @@ if __name__ == '__main__':
     # How and where to save
     parser.add_argument('-s', '--in-separate-files', help='Directory for separate files')
     parser.add_argument('-o', '--output-file', default='output.fa', help='Output file for concatenated data')
+    parser.add_argument('-i', '--index-file', default='index.txt', help='Output file indexing genes')
     # Alignment
     parser.add_argument('-a', '--alignment-directory', help='Make alignment')
 
@@ -215,7 +226,7 @@ if __name__ == '__main__':
             if _write_sequences(seq_file, annotated_files, [f]):
                 sequences.append(seq_file)
     else:
-        _write_sequences(params.output_file, annotated_files, sorted(features))
+        _write_sequences(params.output_file, annotated_files, sorted(features), index_file=params.index_file)
         sequences = [params.output_file]
 
     if params.alignment_directory:
