@@ -2,14 +2,17 @@
 
 import os
 import itertools
-from Bio import SeqIO
+import multiprocessing
+
+from Bio import SeqIO, AlignIO
 from BCBio import GFF
 
 _MUSCLE_EXE = '/home/ante/Programs/alignment/MUSCLE/muscle3.8.31/muscle'
 _CLUSTALO_EXE = '/home/ante/bin/clustalo'
+_CLUSTALO_THREADS = multiprocessing.cpu_count()
 
 
-def _align(job_ind, input_file, output_dir):
+def _align_single_proc(job_ind, input_file, output_dir):
     _, output_file = os.path.split(input_file)
     # Muscle
     # output_file = os.path.join(output_dir, output_file)
@@ -19,6 +22,14 @@ def _align(job_ind, input_file, output_dir):
     # --threads=n
     cmd = f"{_CLUSTALO_EXE} -i {input_file} -o {output_file} --outfmt=phy"
     print(f"Job {job_ind} started: {cmd}")
+    os.system(cmd)
+
+
+def _align_multi_proc(input_file, output_dir):
+    _, output_file = os.path.split(input_file)
+    output_file = os.path.join(output_dir, output_file.replace('.fa', '.phy'))
+    cmd = f"{_CLUSTALO_EXE} -i {input_file} -o {output_file} --outfmt=phy --threads={_CLUSTALO_THREADS}"
+    print(f"Command: {cmd}")
     os.system(cmd)
 
 
@@ -139,6 +150,14 @@ def _write_sequences(output_file, annotated_files, features, index_file=None):
     return False
 
 
+def create_raxml_index(alignment_file, input_index, output_file):
+    for l in open(input_index):
+        pass
+    alignment = AlignIO.read(open(alignment_file), 'phylip')
+
+    print(alignment)
+
+
 # --------------------------------------------------------
 if __name__ == '__main__':
     import argparse
@@ -163,12 +182,15 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--features', help='Extract feature(s). Comma separated.')
     parser.add_argument('-g', '--common-genes', action='store_true', help='Extract common genes')
     parser.add_argument('-f', '--common-features', action='store_true', help='Extract common features')
-    # How and where to save
-    parser.add_argument('-s', '--in-separate-files', help='Directory for separate files')
-    parser.add_argument('-o', '--output-file', default='output.fa', help='Output file for concatenated data')
-    parser.add_argument('-i', '--index-file', default='index.txt', help='Output file indexing genes')
-    # Alignment
-    parser.add_argument('-a', '--alignment-directory', help='Make alignment')
+    # What to extract
+    parser.add_argument('-x', '--extract', help='What to extract (s-separate, c-concatenate, x-both)')
+    parser.add_argument('-a', '--alignment', action='store_true', help='Create alignment files')
+    # parser.add_argument('-i', '--index-file', action='store_true', help='Create index file')
+    parser.add_argument('-r', '--raxml-index', action='store_true', help='Create RAxML index file for concatenated sequences')
+    
+    # Output locations
+    parser.add_argument('-O', '--output-directory', default='extracted_sequences', help='Sequence output directory')
+    parser.add_argument('-A', '--alignment-directory', default='alignments', help='Alignment output directory')
 
     params = parser.parse_args()
 
@@ -218,21 +240,42 @@ if __name__ == '__main__':
         features.update(common_features(annotated_files))
 
     # Extract
-    if params.in_separate_files:
-        ensure_directory(params.in_separate_files)
+    extract = params.extract[0].lower() if params.extract else None
+    if extract in ('s', 'c', 'x'):
+        ensure_directory(params.output_directory)
         sequences = []
-        for f in sorted(features):
-            seq_file = os.path.join(params.in_separate_files, f) + '.fa'
-            if _write_sequences(seq_file, annotated_files, [f]):
+        if extract in ('s', 'x'):
+            for f in sorted(features):
+                seq_file = os.path.join(params.output_directory, f) + '.fa'
+                if _write_sequences(seq_file, annotated_files, [f]):
+                    sequences.append(seq_file)
+        if extract in ('c', 'x'):
+            seq_file = os.path.join(params.output_directory, 'concatenated.fa')
+            index_file = os.path.join(params.output_directory, 'concatenated.ind')
+            if _write_sequences(seq_file, annotated_files, sorted(features), index_file=index_file):
                 sequences.append(seq_file)
-    else:
-        _write_sequences(params.output_file, annotated_files, sorted(features), index_file=params.index_file)
-        sequences = [params.output_file]
 
-    if params.alignment_directory:
+    # Alignment
+    if params.alignment:
         ensure_directory(params.alignment_directory)
-        from concurrent.futures import ThreadPoolExecutor
+        if extract not in ('s', 'c', 'x'):
+            # Take existing sequences
+            sequences = [os.path.join(params.output_directory, f)
+                         for f in sorted(os.listdir(params.output_directory))
+                         if f.endswith('.fa')]
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            for job_ind, seq in enumerate(sequences):
-                future = executor.submit(_align, job_ind, seq, params.alignment_directory)
+        # Single thread
+        for seq in sequences:
+            _align_multi_proc(seq, params.alignment_directory)
+
+        # Multi threads
+        # from concurrent.futures import ThreadPoolExecutor
+        # with ThreadPoolExecutor(max_workers=4) as executor:
+        #     for job_ind, seq in enumerate(sequences):
+        #         future = executor.submit(_align, job_ind, seq, params.alignment_directory)
+
+    if params.raxml_index:
+        alignment_file = os.path.join(params.alignment_directory, 'concatenated.phy')
+        input_index = os.path.join(params.output_directory, 'concatenated.ind')
+        output_file = os.path.join(params.alignment_directory, 'concatenated_partition.txt')
+        create_raxml_index(alignment_file, input_index, output_file)
