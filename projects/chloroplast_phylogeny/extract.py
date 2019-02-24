@@ -138,24 +138,64 @@ def _write_sequences(output_file, annotated_files, features, index_file=None):
             for a, d in zip(annotated_files, data):
                 output.write('>{}\n'.format(a.sequence_name))
                 output.writelines("%s\n" % l for l in d)
+
         if index_file:
             with open(index_file, 'w') as output:
+                # Write header line
+                output.write(' '.join(output_features) + '\n')
+                # Write sequence partitons
                 for a, d in zip(annotated_files, data):
-                    last_ind = 1
-                    for f, seq in zip(output_features, d):
-                        next_ind = last_ind + len(seq) - 1
-                        output.write(f"{a.sequence_name} {f} {last_ind} {next_ind}\n")
-                        last_ind = next_ind + 1
+                    line = a.sequence_name
+                    last_end = 0
+                    for seq in d:
+                        last_end += len(seq)
+                        line += f' {last_end}'
+                    output.write(f"{line}\n")
         return True
     return False
 
 
+# --------------------------------------------------------
+class _IndexInAlignment:
+    def __init__(self, seq):
+        self.indices = [i + 1 for i, c in enumerate(seq.seq) if c != '-']
+
+    def __getitem__(self, i):
+        return self.indices[i]
+
+
 def create_raxml_index(alignment_file, input_index, output_file):
-    for l in open(input_index):
-        pass
+    # Read original indices
+    idx_file = open(input_index)
+    # Header
+    genes = idx_file.readline().split()
+    seq_2_ends = dict()
+    for l in idx_file:
+        fields = l.split()
+        if fields:
+            ends = list(map(int, fields[1:]))
+            seq_2_ends[fields[0]] = ends
+            assert len(genes) == len(ends), (len(genes), len(ends))
+
+    # Find aligned positions
     alignment = AlignIO.read(open(alignment_file), 'phylip')
 
-    print(alignment)
+    data = [(seq.name, seq_2_ends[seq.name], _IndexInAlignment(seq), ) for seq in alignment]
+    #
+    with open(output_file, 'w') as output:
+        last_start = 1
+        for i in range(len(genes) - 1):
+            # ind_prev = ind_next = None
+            for name, input_ends, aligned in data:
+                p = aligned[input_ends[i] - 1]
+                n = aligned[input_ends[i]]
+                if n == p + 1:
+                    output.write(f'DNA, {genes[i]} = {last_start}-{p}\n')
+                    last_start = n
+                    break
+            else:
+                raise ValueError(genes[i])
+        output.write(f'DNA, {genes[-1]} = {last_start}-{len(alignment[0])}\n')
 
 
 # --------------------------------------------------------
