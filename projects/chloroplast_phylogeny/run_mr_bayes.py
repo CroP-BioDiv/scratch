@@ -17,7 +17,7 @@ def ensure_directory(d):
 def _run(job_ind, f, run_dir):
     ensure_directory(run_dir)
     os.chdir(run_dir)
-    cmd = f"{_MR_BAYES_EXE} ../{f}"
+    cmd = f"{_MR_BAYES_EXE} ../{f} > /dev/null"
     print(f"Job {job_ind} started: {cmd}")
     os.system(cmd)
 
