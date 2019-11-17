@@ -11,6 +11,8 @@ _MUSCLE_EXE = '/home/ante/Programs/alignment/MUSCLE/muscle3.8.31/muscle'
 _CLUSTALO_EXE = '/home/ante/bin/clustalo'
 _CLUSTALO_THREADS = multiprocessing.cpu_count()
 
+_concatenated_prefix = 'concatenated'
+
 
 def _align_single_proc(job_ind, input_file, output_dir):
     _, output_file = os.path.split(input_file)
@@ -227,7 +229,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--alignment', action='store_true', help='Create alignment files')
     # parser.add_argument('-i', '--index-file', action='store_true', help='Create index file')
     parser.add_argument('-r', '--raxml-index', action='store_true', help='Create RAxML index file for concatenated sequences')
-    
+
     # Output locations
     parser.add_argument('-O', '--output-directory', default='extracted_sequences', help='Sequence output directory')
     parser.add_argument('-A', '--alignment-directory', default='alignments', help='Alignment output directory')
@@ -290,8 +292,8 @@ if __name__ == '__main__':
                 if _write_sequences(seq_file, annotated_files, [f]):
                     sequences.append(seq_file)
         if extract in ('c', 'x'):
-            seq_file = os.path.join(params.output_directory, 'concatenated.fa')
-            index_file = os.path.join(params.output_directory, 'concatenated.ind')
+            seq_file = os.path.join(params.output_directory, _concatenated_prefix + '.fa')
+            index_file = os.path.join(params.output_directory, _concatenated_prefix + '.ind')
             if _write_sequences(seq_file, annotated_files, sorted(features), index_file=index_file):
                 sequences.append(seq_file)
 
@@ -315,7 +317,7 @@ if __name__ == '__main__':
         #         future = executor.submit(_align, job_ind, seq, params.alignment_directory)
 
     if params.raxml_index:
-        alignment_file = os.path.join(params.alignment_directory, 'concatenated.phy')
-        input_index = os.path.join(params.output_directory, 'concatenated.ind')
-        output_file = os.path.join(params.alignment_directory, 'concatenated_partition.txt')
+        alignment_file = os.path.join(params.alignment_directory, _concatenated_prefix + '.phy')
+        input_index = os.path.join(params.output_directory, _concatenated_prefix + '.ind')
+        output_file = os.path.join(params.alignment_directory, _concatenated_prefix + '_partitions.txt')
         create_raxml_index(alignment_file, input_index, output_file)
