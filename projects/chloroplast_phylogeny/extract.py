@@ -180,7 +180,8 @@ def create_raxml_index(alignment_file, input_index, output_file):
             assert len(genes) == len(ends), (len(genes), len(ends))
 
     # Find aligned positions
-    alignment = AlignIO.read(open(alignment_file), 'phylip')
+    with open(alignment_file) as in_f:
+        alignment = AlignIO.read(in_f, 'phylip')
 
     data = [(seq.name, seq_2_ends[seq.name], _IndexInAlignment(seq), ) for seq in alignment]
     #
